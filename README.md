@@ -1,6 +1,9 @@
 # Out-of-State
 Project contains a write-up on variables to consider when moving out of state and a few tools for analyzing. Written in R markdown and published as HTML. The tool linked in the end is to Tableau Public which is a interactive map that allows users to set specific ranges for different variables where the states that fit the ranges are highlighted for you.
 
+Overall project can be viewed here.
+https://rpubs.com/Cfick/Out-of-State
+
 Data was collected via web scrape and tidyCensus API. Variables explored and sources can be viewed below.
 
  __API__
@@ -36,7 +39,6 @@ https://en.wikipedia.org/wiki/Political_party_strength_in_U.S._states
 
 * __thrillist.com__: This data contains state ranks for scenery.                                                                                                         
 https://www.thrillist.com/travel/nation/most-beautiful-states-in-america
-
 
 
 ## __Data Definitions__
