@@ -1,0 +1,641 @@
+---
+title: "Where Do I Belong?"
+output:
+  html_document:
+    toc: yes
+    toc_depth: 2
+    toc_float: yes
+    number_sections: yes
+    df_print: paged
+    theme: readable
+    code_download: yes
+  pdf_document:
+    toc: yes
+    toc_depth: 2
+---
+
+![GOOGLE IMAGES](https://hagadone.media.clients.ellingtoncms.com/ARTICLE_170739987_AR_0_JZMFOUVPXLQL_t1170.jpg?5cc718665ab672dba93d511ab4c682bb370e5f86)
+
+# __Introduction__
+
+|     ___"A simple life, is a happy life"___ is something you may or may have not heard before. This saying probably doesn't apply to most people, as a majority of the population probably would not be happy with a simple life and are pretty complex dynamic individuals. Me personally, being at the age where I should be settling down and having a family, I find myself unhappy with the areas I have lived in for one reason or another. There are so many things to consider when looking for a place to settle down and a lot of thought should go into it. Even physically going to a place to scout it out, you can't really see the things that may matter most to you sometimes. 
+
+# __Goal of This Project__
+
+|     This lead me to wanting to build the perfect tool for examining states as a whole and get the most insight as to which areas are a good fit for me. I could not find the perfect data set that fit my needs for this project, so I decided to build it myself from scratch using several sources via web scraping and API. By the end of this project, I will have a fully functioning interactive map on one or more platforms. You can explore the map to adjust variables and set ranges you feel comfortable with, resulting in the highlighted states that are the best fit for you.
+<br>
+__Here is a list of necessities that people tend to look for in a home destination that I will build my data around. __ 
+<br>
+
+* __Population__: I think most people do not prefer an overcrowded area.
+* __Diversity__: Want to be around a good mix of cultures.
+* __Similar Age__: It is nice when families resemble you own ages.
+* __Jobs__: You need a source of income to support your lifestyle.
+* __Cost of living__: A level of spending that you can justify living there.
+* __Weather__: A lot of decisions get based on if the destination has snow or not.
+* __Cleanliness__: People want a nice clean environment including things like air and water quality.
+* __Schools__: You have children and want them to get a good education.
+* __Crime Rate__: You want a safe place to live.
+* __Political View__: Want to be around people that are like minded in regards to political policy.
+* __Scenery__: Some people want architecture, history, mountains, a large body of water, art, and some want all of these things combined.
+
+
+# __Data__
+
+|     In order to attempt to answer some of these sought after features, I am going to use several sources and techniques to obtain the data.
+<br>
+
+ __API__
+
+* __tidycensus__: This is a great api that consist of census information for the united states including race percentages, age, and population (key required).         
+ https://api.census.gov/data/key_signup.html                                                                                                                 
+
+ __Web Scrape__
+
+* __U.S. Bureau of Labor Statistics__: This data contains the amount of civilian labor force, number of unemployed, and percentage unemployed by state.                        
+https://www.bls.gov/news.release/laus.t01.htm
+
+* __usabynumbers.com__: This data contains the cost of living index ranks by state.                                                                                                        
+https://usabynumbers.com/states-ranked-by-cost-of-living/
+
+* __currentresults.com__: This data contains the average temperature by state.                                                   
+https://www.currentresults.com/Weather/US/average-annual-state-temperatures.php
+
+* __worldpopulationreview.com__: This data contains amount of average snowfall in inches by state.                                                                             
+https://worldpopulationreview.com/state-rankings/snowiest-states
+
+* __worldpopulationreview.com__: This data contains air quality by state.                                                                                                              
+https://worldpopulationreview.com/state-rankings/air-quality-by-state
+
+* __U.S. Bureau of Labor Statistics__: This data contains the states public school overall ranking.                                                                               
+https://worldpopulationreview.com/state-rankings/public-school-rankings-by-state
+
+* __en.wikipedia.org__: This data contains crime rates for each state.                                                                                                          
+https://en.wikipedia.org/wiki/List_of_U.S._states_and_territories_by_violent_crime_rate
+
+* __en.wikipedia.org__: This data contains political views for each state from the last presidential election.                                                                
+https://en.wikipedia.org/wiki/Political_party_strength_in_U.S._states
+
+* __thrillist.com__: This data contains state ranks for scenery.                                                                                                         
+https://www.thrillist.com/travel/nation/most-beautiful-states-in-america
+
+
+# __Data Collection Process__
+
+|     __I don't want the view of this project to be just heavy code. For that reason, I have hidden most of the code and outputs and will only show examples of the API and web scraping process. The code for the overall project can be viewed in the top right of the page in a little box labeled "Code" where it can be downloaded.__
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+# Here is a list of packages used in the process and tidycensus API Key
+
+library(tidycensus)
+library(tidyverse)
+library(viridis)
+library(rvest)
+census_api_key("98d70618687a45cfe04e60e3fa6cc2e87036fceb")
+
+```
+
+## __API__
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results=FALSE}
+# Map US state Populations
+
+library(leaflet)
+library(stringr)
+library(sf)
+
+
+# not used in knit 
+# apply population at state level
+us_pop <- get_acs(geography = "state", variables = "B01003_001", geometry = TRUE)
+
+pal <- colorQuantile(palette = "viridis", domain = us_pop$estimate, n = 10)
+
+us_pop %>%
+    st_transform(crs = "+init=epsg:4326") %>%
+    leaflet(width = "100%") %>%
+    addProviderTiles(provider = "CartoDB.Positron") %>%
+    addPolygons(popup = ~ str_extract(NAME, "^([^,]*)"),
+                stroke = FALSE,
+                smoothFactor = 0,
+                fillOpacity = 0.7,
+                color = ~ pal(estimate)) %>%
+    addLegend("bottomright", 
+              pal = pal, 
+              values = ~ estimate,
+              title = "Population percentiles",
+              opacity = 1)
+
+
+# population subset
+us_pop$population <- us_pop$estimate
+US_pop2 <- us_pop[,-c(3:6)] 
+
+US_pop2
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide', fig.show='hide'}
+
+# not used in knit
+# Gather Average Income by State and visualize
+
+US_inc <- get_acs(geography = "state", variables = "B19013_001")
+
+# income by state
+US_inc %>%
+  mutate(NAME = gsub("State, US", "", NAME)) %>%
+  ggplot(aes(x = estimate, y = reorder(NAME, estimate))) +
+  geom_errorbarh(aes(xmin = estimate - moe, xmax = estimate + moe)) +
+  geom_point(color = "red", size = 3) +
+  labs(title = "Household Income by State in the US",
+       subtitle = "2015-2019 American Community Survey",
+       y = "",
+       x = "ACS estimate (bars represent margin of error)")
+
+# income subset
+US_inc$Income <- US_inc$estimate
+us_inc2 <- US_inc[,-c(3,4,5)]
+
+```
+
+Get Diversity Percentages from Census API
+```{r, warning=FALSE, message=FALSE}
+library(tidycensus)
+
+# calculate race percentages by state
+# establish race variables
+race_vars <- c(
+  White = "B03002_003",
+  Black = "B03002_004",
+  Native = "B03002_005",
+  Asian = "B03002_006",
+  HIPI = "B03002_007",
+  Hispanic = "B03002_012"
+)
+
+# retrieve census data from API
+us_race <- get_acs(
+  geography = "state",
+  variables = race_vars,
+  summary_var = "B03002_001"
+)
+
+# build a manageable dataframe
+us_race_percent <- us_race %>%
+  mutate(percent = 100 * (estimate / summary_est)) %>%
+  select(NAME, variable, percent)
+
+# change percent data type to integer
+us_race_percent$percent <- as.integer(us_race_percent$percent)
+
+# view table
+us_race_percent
+```
+<br>
+*___This data breaks race down into 6 categories along with respective percentages. Here is a visual for each state.___*
+```{r, echo=FALSE, warning=FALSE, message=FALSE, fig.width=10,fig.height=11}
+# library
+library(ggplot2)
+library(viridis)
+library(hrbrthemes)
+
+# plot
+viz <- ggplot(us_race_percent, aes(fill=variable, y=percent, x=NAME)) + 
+    geom_bar(position="stack", stat="identity") +
+    scale_fill_viridis(discrete = T) +
+    ggtitle("Race Percentage") +
+    theme_ipsum() +
+    xlab("State") + 
+    coord_flip() +
+    theme(axis.text=element_text(size=5))
+# view
+viz
+
+```
+
+
+|     As you can see, diversity is kind of a tricky thing to put a number on as a whole. We will try to make a column where diversity is as representative of the data as possible. We will have to consider the number of races present and the percentages for race in our consideration. I will attempt this by creating a score, which is the number of races present + proportions of race based on a points system. The higher the number, the higher the diversity in that state.
+
+<br>
+   
+```{r, warning=FALSE, message=FALSE}
+library(dplyr)
+
+# eliminate all rows that have 0 percent
+diversity <- us_race_percent[us_race_percent$percent > 0, ]
+
+# count the number of categories that have a percentage more than 0 for each state.
+cnt <- diversity %>% group_by(NAME) %>%
+  tally()
+
+# create point system where higher percentages earn less points
+diversity$points <- with(diversity, ifelse(percent >= 90 & percent < 100, 1, ifelse(percent > 80 & percent < 90, 2,ifelse(percent > 70 & percent < 80,3, ifelse(percent > 60 & percent < 70 , 4,ifelse(percent > 50 & percent < 60 , 5,ifelse(percent > 40 & percent < 50 , 6,ifelse(percent > 30 & percent < 40 , 7, ifelse(percent > 20 & percent < 30 , 8,ifelse(percent > 10 & percent < 20 , 9, 10))))))))))
+
+# get sum of points; Higher points means bigger proportions of diversity.
+diverse <- diversity %>% 
+  group_by(NAME) %>% 
+  summarise(points = sum(points))
+
+# create score combining number of races + proportion score
+diverse$diversity <- cnt$n + diverse$points
+diverse <- diverse[,c(1,3)]
+```
+Here is how the new established scoring system for diversity looks.
+```{r, echo=FALSE}
+# view
+diverse
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, , results='hide'}
+# Get age by state from Census API
+
+us_median_age <- get_acs(
+  geography = "state",
+  variables = "B01002_001",
+  year = 2019,
+  survey = "acs1",
+  geometry = TRUE,
+  resolution = "20m"
+) 
+
+us_median_age <- data.frame(us_median_age[,c(2,4)])
+us_median_age <- us_median_age[,c(1,2)]
+colnames(us_median_age) <- c("NAME", "median_age")
+
+us_median_age
+```
+
+## __Web Scrape__
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Web scrape Civilian labor table from U.S. Bureau of Labor Statistics
+
+url <- "https://www.bls.gov/news.release/laus.t01.htm"
+population <- url %>%
+  read_html() %>%
+  html_nodes(xpath='//*[@id="lau_srd_tb1"]') %>%
+  html_table()
+df <- as.data.frame(population[[1]])
+
+# removing sub titles/foot notes and sub-setting most recent columns
+df <- df[-c(1:2,62:63),-c(2:4,6:8,10:12)]
+
+# removing non-consistent areas 
+df <- df[-c(6,12,17,27,38,42,55),]
+
+colnames(df) <- c('NAME', 'labor_force', 'unempl', 'unempl_perc')
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Web scrape cost of living from 2021 cost of living index by state.
+
+url <- "https://usabynumbers.com/states-ranked-by-cost-of-living/"
+cost_ind <- url %>%
+  read_html() %>%
+  html_nodes(xpath='//*[@id="post-905"]/div[1]/div[2]/div[1]/figure/table') %>%
+  html_table()
+
+df2 <- as.data.frame(cost_ind[[1]])
+
+# remove the first 4 spaces from column 1
+df2 <- df2 %>%
+  mutate(NAME = str_sub(X1, 4, -1))
+
+# remove col 1
+df2 <- df2[,-1]
+
+# rename columns for union and rearrange
+colnames(df2) <- c("cost_index", "NAME" )
+
+df2 <- df2[,c(2,1)]
+
+# remove leading space
+df2$NAME <- trimws(df2$NAME, which = c("left"))
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Web scrape average temperature by state in degrees Fahrenheit.
+
+# data is split into multiple tables so we will have to combine at the end
+url <- "https://www.currentresults.com/Weather/US/average-annual-state-temperatures.php"
+avg_temp1 <- url %>%
+  read_html() %>%
+  html_nodes(xpath='//*[@id="maincol"]/div[1]/div[4]/table[1]') %>%
+  html_table()
+df31 <- as.data.frame(avg_temp1[[1]])
+
+avg_temp2 <- url %>%
+  read_html() %>%
+  html_nodes(xpath='//*[@id="maincol"]/div[1]/div[4]/table[2]') %>%
+  html_table()
+df32 <- as.data.frame(avg_temp2[[1]])
+
+avg_temp3 <- url %>%
+  read_html() %>%
+  html_nodes(xpath='//*[@id="maincol"]/div[1]/div[4]/table[3]') %>%
+  html_table()
+df33 <- as.data.frame(avg_temp3[[1]])
+
+# combine
+df3 <- rbind(df31,df32,df33)
+
+# subset to needed variables
+df3 <- df3[,c(1,2)]
+
+# rename for join
+colnames(df3) <- c('NAME',"avg_temp_f")
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Web scrape average snowfall by state in inches.
+
+url <- "https://worldpopulationreview.com/state-rankings/snowiest-states"
+avg_snow <- url %>%
+  read_html() %>%
+  html_nodes(xpath='//*[@id="dataTable"]/div[1]/div/div[1]/div/div[1]/div[2]/table') %>%
+  html_table()
+df4 <- as.data.frame(avg_snow[[1]])
+
+# rename for join
+colnames(df4) <- c('NAME',"avg_snow_in")
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+# Web scrape air quality by state. The lower the rating the higher quality the air.
+
+url <- "https://worldpopulationreview.com/state-rankings/air-quality-by-state"
+air_quality <- url %>%
+  read_html() %>%
+  html_nodes(xpath='//*[@id="dataTable"]/div[1]/div/div[1]/div/div[2]/div[2]') %>%
+  html_table()
+df5 <- as.data.frame(air_quality[[1]])
+
+df5 <- df5[,-3]
+
+# rename for join
+colnames(df5) <- c('NAME',"air_quality")
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Web scrape public school overall quality by state. The lower the number the higher it ranks.
+
+url <- "https://worldpopulationreview.com/state-rankings/public-school-rankings-by-state"
+school <- url %>%
+  read_html() %>%
+  html_nodes(xpath='//*[@id="dataTable"]/div[1]/div/div[1]/div/div[1]/div[2]') %>%
+  html_table()
+df6 <- as.data.frame(school[[1]])
+
+# subset needed info for clean join later
+df6 <- df6[,-c(3,4)]
+
+# rename columns for join
+colnames(df6) <- c('NAME',"school_rank")
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Web scrape Crime rates by state. Higher the number the higher the crime rate.
+
+url <- "https://en.wikipedia.org/wiki/List_of_U.S._states_and_territories_by_violent_crime_rate"
+crime <- url %>%
+  read_html() %>%
+  html_nodes(xpath='//*[@id="mw-content-text"]/div[1]/table') %>%
+  html_table()
+df7 <- as.data.frame(crime[[1]])
+
+# Subsetting needed columns and rows
+df7 <- df7[-c(1:2,55),c(1,3)]
+
+# rename for join
+colnames(df7) <- c('NAME',"crime_rate")
+
+```
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+
+# Web scrape most recent state political votes in presidential election by state. Data will be easier to analyze if labeled binary. Republican will be labeled as "0" and Democratic will be labeled "1". 
+
+# establish source
+url <- "https://en.wikipedia.org/wiki/Political_party_strength_in_U.S._states"
+
+# scrape data
+politic <- url %>%
+  read_html() %>%
+  html_nodes(xpath='//*[@id="mw-content-text"]/div[1]/table[6]') %>%
+  html_table()
+
+# turn data into dataframe
+df8 <- as.data.frame(politic[[1]])
+
+# Subsetting needed columns and rows
+df8 <- df8[,c(1,2)]
+
+# rename for join
+colnames(df8) <- c('NAME',"politic")
+
+# make data binary
+df8$politic <- ifelse(df8$politic=="Republican", 0 , 1)
+```
+
+This is an example of the web scraping process to establish a scenery rank based system. 
+```{r, warning=FALSE, message=FALSE}
+# libraries
+library(tidyverse)
+library(stringr)
+library(xml2)
+
+# source
+url <- "https://www.thrillist.com/travel/nation/most-beautiful-states-in-america"
+
+# scrape the data
+scenery <- url %>%
+  read_html() %>%
+  html_nodes("h2")
+
+# convert xml to data frame
+vals <- data.frame(trimws(xml_text(scenery)))
+
+# split the data into two columns of rank and state
+df11 <- str_split_fixed(vals$trimws.xml_text.scenery.., " ", 2)
+df11 <- data.frame(df11)
+
+# rename
+colnames(df11) <- c("scenery", "NAME")
+
+# convert scenery to number and remove periods
+df11$scenery <- as.numeric(gsub("\\.","",as.character(df11$scenery)))
+
+# change order
+df11 <- df11[,c(2,1)]
+
+df11
+```
+
+
+## __Combine and Examine All Data__
+
+|     The package tidycensus contains pretty clean data already and there was little to no cleaning to be done for that data. As far as the web scraping data goes, we can examine the data more.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+# combine all of the variables into one large dataset
+
+# join income/population and convert to data frame
+US_df <- full_join(US_pop2, us_inc2)
+us_df <- as.data.frame(US_df)
+
+#join labor scraped data to api data
+us_full <- as.data.frame(full_join(us_df, df))
+
+# join cost index to other joined sets
+us_full2 <- full_join(us_full, df3)
+
+# join average snowfall by state
+us_full3 <- full_join(us_full2, df4)
+
+# join temperature
+us_full4 <- full_join(us_full3, df2)
+
+# join Air quality
+us_full5 <- full_join(us_full4, df5)
+
+# join school quality
+us_full6 <- full_join(us_full5, df6)
+
+# join crime rate
+us_full7 <- full_join(us_full6, df7)
+
+# join crime rate
+us_full8 <- full_join(us_full7, diverse)
+
+# join age
+us_full9 <- full_join(us_full8, us_median_age)
+
+# join politics
+us_full10 <- full_join(us_full9, df8)
+
+# join scenery
+us_full11 <- full_join(us_full10, df11)
+
+us_full11
+
+
+```
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(Amelia)
+
+# Examine the Data for Missing Values
+missmap(us_full11)
+```
+
+__Explanation of missing data:__
+
+|     Some sources did not contain observations for Puerto Rico and Washington DC. The Average snow had one extra Null observation and that was due to Hawaii being the only state having zero inches of snow. This is fixed later in the code.
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE, results='hide'}
+# quick fix for Hawaii snow value
+us_full11[7,10] = 0
+
+us_full11
+
+```
+
+
+## __Data Definitions__
+
+* __GEOID__: This gives each state a unique id number.
+* __NAME__: Name of the state.
+* __population__: Population per state.
+* __Income__: Average income per state.
+* __geometry__: A spatial feature that helps with mapping.
+* __labor_force__: Amount of people in the state that can work, both employed and unemployed.
+* __unempl__: Amount of people unemployed in the state.
+* __unempl_perc__: Percentage of people unemployed in the state.
+* __avg_temp_f__: Average temperature for each state in Fahrenheit. 
+* __avg_snow_in__: Average amount of snowfall in inches per year by state.
+* __cost_index__: The cost of living index by state. The higher it is the more expensive.
+* __air_quality__: The air quality rating per state. The lower the number the better.
+* __school_rank__: The overall quality of public schools by state rankings. The lower the value the better the school systems.
+* __crime_rate__: The amount of crime by state. The higher the number the worse the crime rates.
+* __diversity__: Created value combining the number of races present in the state and proportions. The higher the score, the more diverse the state is.
+* __median_age__: The median age for each state.
+* __politic__: The political stance in the previous presidential elections. Republican is represented as "0" and democratic as "1".
+* __scenery__: This is the ranking for each states scenery. The lower the number, the better the state scored for scenery.
+
+## Data Table
+
+|   Below is a view of the data table. Given the compact size of the dataset, having some one glance context is helpful.
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+full_df <- us_full11[order(us_full11$GEOID),]
+full_df 
+```
+
+
+# __Analysis__
+
+|     To create a tool for analyzing the data, I imported the data into Tableau and built the dashboard there. An example of the tool and the results for the ranges I picked are demonstrated in the image below. 
+<br>
+![My results after using the tool.](C:/Users/CSFic/Desktop/Dashboard.PNG)
+
+<br>
+
+|   After narrowing down the ranges of the variables I felt best fit my needs, the states remaining were Colorado and Virginia. To be more specific, I limited my variables to democratic, small to medium sized populations, a higher average of income, a lower cost of living, a smaller size of labor force, lower median age, medium to low crime rate, and a high scenery ranking. All other variables were pretty much full range and did not matter to me.
+<br>
+
+|   Oddly enough, these are the two states I have traveled to recently at the end of 2021, checking out most of Colorado state-wide and Williamsburg, Virginia with the intention of possibly moving there. Both of these areas were beautiful and it is hard to pick one over the other. This tool has helped reaffirm my considerations for moving to these areas.
+
+
+
+# __Use the Tools!__
+
+|   There are two tools to explore below. One is the interactive Tableau dashboard shown above, that I think works best as it allows you to adjust all the variables at once. The second tool is an application made in a package called shiny. This tool is good for visually exploring each variable one at a time.
+
+
+## __Tableau Dashboard__
+
+Click ![[HERE](https://public.tableau.com/shared/ZSMCTNWK9?:display_count=n&:origin=viz_share_link)] to use the Tableau Dashboard located in Tableau Public!
+
+
+*__Note: You may need to create an account with Tableau Public to use. If the map goes completely black during use, this means there are no states fitting the range selected. You will need to readjust the ranges for the map to reappear.__*
+
+
+## __Interactive Shiny APP__
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# run shiny app from github; will not display in knitted file
+#runGitHub(repo = "Out-of-State","FannyPackFanatic", ref= "main")
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, out.width="100%"}
+# display link to published shiny app
+library(knitr)
+
+include_url("https://craigf.shinyapps.io/OutOfState/", height = 600)
+```
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+#store data on local network
+#write.csv(full_shin_df, "C:/Users/CSFic/Desktop/OutofState.csv", row.names = FALSE)
+```
+*__Note: For the polotic variable 0 = Republican and 1 = Democrat.__*
+
+If you want to read more on this subject, here is an excellent and relevant article.
+![[Article](https://worldhappiness.report/ed/2020/urban-rural-happiness-differentials-across-the-world/)]
